@@ -1,9 +1,9 @@
-import { webContents } from 'electron';
 import {
   SyphonServerDirectory as NodeSyphonServerDirectory,
   SyphonServerDescription,
   SyphonServerDirectoryListenerChannel,
 } from 'node-syphon';
+import { webContentsSend } from '@/utils/web-contents-send';
 
 class _SyphonServerDirectory {
   private directory: NodeSyphonServerDirectory;
@@ -29,6 +29,7 @@ class _SyphonServerDirectory {
 
   /**
    * Add a listener to server directory events from the main process.
+   *
    * @param { SyphonServerDirectoryListenerChannel } channel The received channel.
    * @param { (message: any) => void } listener The listener to the given message.
    */
@@ -56,6 +57,7 @@ class _SyphonServerDirectory {
 
   /**
    * Remove one or all listeners to server directory events from the main process.
+   *
    * @param { SyphonServerDirectoryListenerChannel } channel The received channel.
    * @param { (message: any) => void | undefined } listener The listener to the given message.
    * If not provided, all listeners to given channel will be removed.
@@ -103,14 +105,14 @@ class _SyphonServerDirectory {
     this.directory.on(
       SyphonServerDirectoryListenerChannel.SyphonServerInfoNotification,
       (message: string) => {
-        // Notify amin.
-        this.notidyMain.bind(this)(
+        // Notify main.
+        this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerInfoNotification,
           message
         );
 
         // Notify renderer.
-        this.notifyRenderer.bind(this)(
+        webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerInfoNotification,
           message
         );
@@ -120,14 +122,14 @@ class _SyphonServerDirectory {
     this.directory.on(
       SyphonServerDirectoryListenerChannel.SyphonServerErrorNotification,
       (message: string) => {
-        // Notify amin.
-        this.notidyMain.bind(this)(
+        // Notify main.
+        this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerErrorNotification,
           message
         );
 
         // Notify renderer.
-        this.notifyRenderer.bind(this)(
+        webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerErrorNotification,
           message
         );
@@ -137,14 +139,14 @@ class _SyphonServerDirectory {
     this.directory.on(
       SyphonServerDirectoryListenerChannel.SyphonServerAnnounceNotification,
       (message: SyphonServerDescription) => {
-        // Notify amin.
-        this.notidyMain.bind(this)(
+        // Notify main.
+        this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerAnnounceNotification,
           message
         );
 
         // Notify renderer.
-        this.notifyRenderer.bind(this)(
+        webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerAnnounceNotification,
           message
         );
@@ -154,14 +156,14 @@ class _SyphonServerDirectory {
     this.directory.on(
       SyphonServerDirectoryListenerChannel.SyphonServerRetireNotification,
       (message: SyphonServerDescription) => {
-        // Notify amin.
-        this.notidyMain.bind(this)(
+        // Notify main.
+        this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerRetireNotification,
           message
         );
 
         // Notify renderer.
-        this.notifyRenderer.bind(this)(
+        webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerRetireNotification,
           message
         );
@@ -173,12 +175,12 @@ class _SyphonServerDirectory {
   }
 
   /**
-   * Notify all main process listeners of an incoming `Syphon` server directory message.
+   * Notify all main process' listeners of an incoming `Syphon` server directory message.
    *
-   * @param { SyphonServerDirectoryListenerChannel } channel The received channel.
+   * @param { SyphonServerDirectoryListenerChannel } channel The event channel.
    * @param { any } message The received message.
    */
-  private notidyMain(
+  private notifyMain(
     channel: SyphonServerDirectoryListenerChannel,
     message: any
   ): void {
@@ -188,31 +190,16 @@ class _SyphonServerDirectory {
       }
     }
   }
-
-  /**
-   * Notify all windows of an incoming `Syphon` server directory message.
-   *
-   * @param { SyphonServerDirectoryListenerChannel } channel The received channel.
-   * @param { any } message The received message.
-   */
-  private notifyRenderer(
-    channel: SyphonServerDirectoryListenerChannel,
-    message: any
-  ): void {
-    const contents = webContents.getAllWebContents();
-    for (const webContent of contents) {
-      webContent.send(channel, {
-        message,
-        servers: this.servers,
-      });
-    }
-  }
 }
 
+// Create a singleton.
 const directory = new _SyphonServerDirectory();
 Object.freeze(directory);
 
+// Export the singleton.
 export { directory as SyphonServerDirectory };
+
+// Forward `node-syphon` exports.
 export {
   SyphonServerDirectoryListenerChannel,
   SyphonServerDescription,
