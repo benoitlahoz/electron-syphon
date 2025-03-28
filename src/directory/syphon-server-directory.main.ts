@@ -1,9 +1,11 @@
+import { ipcMain } from 'electron';
 import {
   SyphonServerDirectory as NodeSyphonServerDirectory,
   SyphonServerDescription,
   SyphonServerDirectoryListenerChannel,
 } from 'node-syphon';
-import { webContentsSend } from '@/utils/web-contents-send';
+import { webContentsSend } from '../utils/web-contents-send';
+import { ElectronSyphonDirectoryChannel } from '@/common';
 
 class _SyphonServerDirectory {
   private directory: NodeSyphonServerDirectory;
@@ -15,6 +17,14 @@ class _SyphonServerDirectory {
 
   constructor() {
     this.directory = new NodeSyphonServerDirectory();
+
+    ipcMain.handle(ElectronSyphonDirectoryChannel.IsListening, async () => {
+      return this.isListening;
+    });
+
+    ipcMain.handle(ElectronSyphonDirectoryChannel.GetServers, async () => {
+      return this.servers;
+    });
   }
 
   /**
@@ -108,13 +118,19 @@ class _SyphonServerDirectory {
         // Notify main.
         this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerInfoNotification,
-          message
+          {
+            info: message,
+            servers: this.servers,
+          }
         );
 
         // Notify renderer.
         webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerInfoNotification,
-          message
+          {
+            info: message,
+            servers: this.servers,
+          }
         );
       }
     );
@@ -125,13 +141,19 @@ class _SyphonServerDirectory {
         // Notify main.
         this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerErrorNotification,
-          message
+          {
+            error: message,
+            servers: this.servers,
+          }
         );
 
         // Notify renderer.
         webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerErrorNotification,
-          message
+          {
+            error: message,
+            servers: this.servers,
+          }
         );
       }
     );
@@ -142,13 +164,19 @@ class _SyphonServerDirectory {
         // Notify main.
         this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerAnnounceNotification,
-          message
+          {
+            server: message,
+            servers: this.servers,
+          }
         );
 
         // Notify renderer.
         webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerAnnounceNotification,
-          message
+          {
+            server: message,
+            servers: this.servers,
+          }
         );
       }
     );
@@ -159,13 +187,42 @@ class _SyphonServerDirectory {
         // Notify main.
         this.notifyMain.bind(this)(
           SyphonServerDirectoryListenerChannel.SyphonServerRetireNotification,
-          message
+          {
+            server: message,
+            servers: this.servers,
+          }
         );
 
         // Notify renderer.
         webContentsSend(
           SyphonServerDirectoryListenerChannel.SyphonServerRetireNotification,
-          message
+          {
+            server: message,
+            servers: this.servers,
+          }
+        );
+      }
+    );
+
+    this.directory.on(
+      SyphonServerDirectoryListenerChannel.SyphonServerUpdateNotification,
+      (message: SyphonServerDescription) => {
+        // Notify main.
+        this.notifyMain.bind(this)(
+          SyphonServerDirectoryListenerChannel.SyphonServerUpdateNotification,
+          {
+            server: message,
+            servers: this.servers,
+          }
+        );
+
+        // Notify renderer.
+        webContentsSend(
+          SyphonServerDirectoryListenerChannel.SyphonServerUpdateNotification,
+          {
+            server: message,
+            servers: this.servers,
+          }
         );
       }
     );
@@ -194,13 +251,11 @@ class _SyphonServerDirectory {
 
 // Create a singleton.
 const directory = new _SyphonServerDirectory();
-Object.freeze(directory);
+Object.seal(directory);
 
 // Export the singleton.
 export { directory as SyphonServerDirectory };
 
-// Forward `node-syphon` exports.
-export {
-  SyphonServerDirectoryListenerChannel,
-  SyphonServerDescription,
-} from 'node-syphon';
+// Forward `node-syphon` types exports.
+export type * from 'node-syphon';
+export { SyphonServerDirectoryListenerChannel };

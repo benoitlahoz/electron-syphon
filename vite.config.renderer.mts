@@ -8,8 +8,8 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     lib: {
-      entry: path.resolve(__dirname, 'src/index.ts'),
-      fileName: 'electron-syphon',
+      entry: path.resolve(__dirname, 'src/renderer.ts'),
+      fileName: 'electron-syphon-renderer',
       formats: ['es', 'cjs'],
     },
     minify: 'terser',

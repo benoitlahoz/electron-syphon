@@ -21,7 +21,7 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "lib": ["es2015", "webworker"],
+    "lib": ["es2015", "DOM", "webworker"],
     "types": ["vite/client"]
   },
   "include": ["./src/**/*.ts", "./src/**/*.tsx", "./src/**/*.d.ts"],

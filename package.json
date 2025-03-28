@@ -8,13 +8,40 @@
     "url": "https://www.benoitlahoz.io",
     "email": "info@benoitlahoz.io"
   },
-  "main": "index.js",
+  "main": "dist/electron-syphon-main.js",
+  "exports": {
+    ".": {
+      "import": "./dist/electron-syphon-main.mjs",
+      "require": "./dist/electron-syphon-main.js",
+      "types": "./dist/main.d.ts"
+    },
+    "./main": {
+      "import": "./dist/electron-syphon-main.mjs",
+      "require": "./dist/electron-syphon-main.js",
+      "types": "./dist/main.d.ts"
+    },
+    "./renderer": {
+      "import": "./dist/electron-syphon-renderer.mjs",
+      "require": "./dist/electron-syphon-renderer.js",
+      "types": "./dist/renderer.d.ts"
+    },
+    "./preload": {
+      "import": "./dist/electron-syphon-preload.mjs",
+      "require": "./dist/electron-syphon-preload.js",
+      "types": "./dist/preload.d.ts"
+    }
+  },
   "scripts": {
-    "build": "vite build"
+    "prebuild": "rimraf dist",
+    "build": "yarn build:main && yarn build:renderer && yarn build:preload",
+    "build:main": "vite build -c vite.config.main.mts",
+    "build:renderer": "vite build -c vite.config.renderer.mts",
+    "build:preload": "vite build -c vite.config.preload.mts"
   },
   "devDependencies": {
     "@types/node": "^22.13.13",
     "electron": "^34.0.1",
+    "rimraf": "^6.0.1",
     "terser": "^5.19.2",
     "vite": "^4.4.7",
     "vite-plugin-dts": "^3.3.1"
