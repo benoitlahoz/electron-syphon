@@ -1,4 +1,4 @@
-import { SyphonServerSelectComponent } from './syphon-server-select.webcomponent';
+import { SyphonServerSelectComponent } from '../directory/renderer/components/syphon-server-select';
 import { SyphonCanvasComponent } from './syphon-canvas.webcomponent';
 
 /**
@@ -9,7 +9,4 @@ export const installSyphonComponents = () => {
   SyphonCanvasComponent.install();
 };
 
-export {
-  SyphonServerSelectComponent as SyphonServerMenuComponent,
-  SyphonCanvasComponent,
-};
+export { SyphonServerSelectComponent, SyphonCanvasComponent };

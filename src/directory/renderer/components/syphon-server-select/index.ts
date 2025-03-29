@@ -4,37 +4,23 @@ import {
   SyphonServerDirectoryListenerChannel,
 } from 'node-syphon/universal';
 import { SyphonAPIName } from '@/common';
-import { SyphonCanvasComponent } from './syphon-canvas.webcomponent';
-
-interface ServerSelectDescription extends SyphonServerDescription {
-  selected: boolean;
-}
+import { SyphonCanvasComponent } from '../../../../webcomponents/syphon-canvas.webcomponent';
+import { SyphonServerCollection } from '@/server/syphon-server-collection';
 
 export class SyphonServerSelectComponent extends HTMLElement {
-  private static APIName = SyphonAPIName;
-
   /**
    * Install the web component.
    *
    * @param { string } name The name of the component (defaults to `syphon-server-list`).
    */
-  public static install(
-    name = 'syphon-server-select',
-    options?: { apiName?: string }
-  ) {
+  public static install(name = 'syphon-server-select') {
     customElements.define(name, SyphonServerSelectComponent);
-
-    if (options) {
-      if (options.apiName) {
-        SyphonServerSelectComponent.APIName = options.apiName;
-      }
-    }
   }
 
   /**
    * Element's attributes.
    */
-  public static observedAttributes = ['selected', 'canvas'];
+  public static observedAttributes = ['selected', 'uuid', 'canvas'];
 
   /**
    * Inter-process communication object to communicate with main Electron process.
@@ -44,7 +30,7 @@ export class SyphonServerSelectComponent extends HTMLElement {
   /**
    * Root HTML select element.
    */
-  private root: HTMLSelectElement;
+  private el: HTMLSelectElement;
 
   /**
    * Default option when no server is selected.
@@ -54,7 +40,7 @@ export class SyphonServerSelectComponent extends HTMLElement {
   /**
    * Directory servers.
    */
-  public readonly servers: ServerSelectDescription[] = [];
+  public readonly servers: SyphonServerCollection;
 
   /**
    * Flag to avoid multiple 'connected' callback runs.
@@ -68,6 +54,7 @@ export class SyphonServerSelectComponent extends HTMLElement {
 
   constructor() {
     super();
+    this.servers = new SyphonServerCollection();
   }
 
   /**
@@ -83,7 +70,7 @@ export class SyphonServerSelectComponent extends HTMLElement {
       }`;
       option.value = server.SyphonServerDescriptionUUIDKey;
       option.selected = server.selected;
-      this.root.appendChild(option);
+      this.el.appendChild(option);
     }
   }
 
@@ -102,7 +89,7 @@ export class SyphonServerSelectComponent extends HTMLElement {
     }`;
     option.value = server.SyphonServerDescriptionUUIDKey;
     option.selected = selected;
-    this.root.appendChild(option);
+    this.el.appendChild(option);
   }
 
   /**
@@ -111,7 +98,7 @@ export class SyphonServerSelectComponent extends HTMLElement {
    * @param { SyphonServerDescription } server The server's description.
    */
   private removeOption(server: SyphonServerDescription) {
-    const option = Array.from(this.root.children).find(
+    const option = Array.from(this.el.children).find(
       (el: HTMLOptionElement) =>
         el.value === server.SyphonServerDescriptionUUIDKey
     );
@@ -126,21 +113,21 @@ export class SyphonServerSelectComponent extends HTMLElement {
   public async connectedCallback() {
     if (this.isInitialized) return;
 
-    if (!window[SyphonServerSelectComponent.APIName]) {
+    if (!window[SyphonAPIName]) {
       throw new Error(
-        `Syphon inter-process communicatiin API with name '${SyphonServerSelectComponent.APIName}' was not installed on 'window'.`
+        `Syphon inter-process communicatiin API with name '${SyphonAPIName}' was not installed on 'window'.`
       );
     }
 
     // Get Inter-process communication API defined in the `preload` script.
-    this.syphonIpc = window[SyphonServerSelectComponent.APIName];
+    this.syphonIpc = window[SyphonAPIName];
 
     // Create underlying select element.
-    this.root = document.createElement('select');
+    this.el = document.createElement('select');
     this.defaultOption = document.createElement('option');
-    this.defaultOption.innerText = 'Select a server...';
-    this.root.appendChild(this.defaultOption);
-    this.appendChild(this.root);
+    this.defaultOption.text = 'Select a server...';
+    this.el.appendChild(this.defaultOption);
+    this.appendChild(this.el);
 
     // Bootstrap main process Syphon listeners.
     this.syphonIpc.directory.on(
@@ -152,23 +139,13 @@ export class SyphonServerSelectComponent extends HTMLElement {
           servers: SyphonServerDescription[];
         }
       ) => {
-        // TODO: Event for announce.
+        if (this.servers.add(message.server)) {
+          // Add unselected server if it doen't exist.
+          this.addOption(message.server);
 
-        for (const server of message.servers) {
-          const existing = this.servers.find(
-            (registered: SyphonServerDescription) =>
-              registered.SyphonServerDescriptionUUIDKey ===
-              server.SyphonServerDescriptionUUIDKey
-          );
-
-          if (existing) continue;
-
-          // Add unselected server.
-          this.servers.push({
-            ...server,
-            selected: false,
-          });
-          this.addOption(server);
+          // Emit event.
+          const event = new Event('announce');
+          this.dispatchEvent(event);
         }
       }
     );
@@ -182,24 +159,21 @@ export class SyphonServerSelectComponent extends HTMLElement {
           servers: SyphonServerDescription[];
         }
       ) => {
-        // TODO: handle if selected
+        const existing = this.servers.withUuid(
+          message.server.SyphonServerDescriptionUUIDKey
+        );
 
-        for (const server of this.servers) {
-          const existing = this.servers.find(
-            (registered: SyphonServerDescription) =>
-              registered.SyphonServerDescriptionUUIDKey ===
-              server.SyphonServerDescriptionUUIDKey
-          );
-
-          if (existing) {
-            const index = this.servers.indexOf(existing);
-            this.servers.splice(index, 1);
-            this.removeOption(server);
-          }
+        if (existing && existing.selected) {
+          // Select default option.
+          this.el.options[0].selected = true;
         }
 
-        // TODO: Check if local servers correspond to received servers and update accordingly.
-        console.log('RETIRE', message);
+        if (this.servers.remove(existing)) {
+          this.removeOption(message.server);
+
+          const event = new Event('retire');
+          this.dispatchEvent(event);
+        }
       }
     );
 
@@ -212,35 +186,34 @@ export class SyphonServerSelectComponent extends HTMLElement {
           servers: SyphonServerDescription[];
         }
       ) => {
-        for (const server of this.servers) {
-          const existing = this.servers.find(
-            (registered: SyphonServerDescription) =>
-              registered.SyphonServerDescriptionUUIDKey ===
-              server.SyphonServerDescriptionUUIDKey
-          );
+        const existing = this.servers.find(
+          (registered: SyphonServerDescription) =>
+            registered.SyphonServerDescriptionUUIDKey ===
+            message.server.SyphonServerDescriptionUUIDKey
+        );
 
-          if (existing) {
-            const index = this.servers.indexOf(existing);
-            this.servers.splice(index, 1, {
-              ...message.server,
-              // TODO: handle if selected
-              selected: server.selected,
-            });
-            this.removeOption(server);
-          }
+        // Update same UUID server.
+        const updated = this.servers.update(message.server);
+        const option = Array.from(this.el.options).find(
+          (op: HTMLOptionElement) =>
+            op.value === message.server.SyphonServerDescriptionUUIDKey
+        );
+        if (updated && option) {
+          option.text = `${updated.SyphonServerDescriptionAppNameKey}${
+            updated.SyphonServerDescriptionNameKey
+              ? ` - ${updated.SyphonServerDescriptionNameKey}`
+              : ''
+          }`;
+          option.value = updated.SyphonServerDescriptionUUIDKey;
+          option.selected = existing.selected;
         }
-
-        // TODO: Check if local servers correspond to received servers and update accordingly.
         console.log('UPDATE', message);
       }
     );
 
     const servers = await this.syphonIpc.directory.getServers();
     for (const server of servers) {
-      this.servers.push({
-        ...server,
-        selected: false,
-      });
+      this.servers.add(server);
     }
 
     // Build options for 'select' element.
@@ -271,10 +244,6 @@ export class SyphonServerSelectComponent extends HTMLElement {
    * @param { any } newValue The new value of the attribute.
    */
   public attributeChangedCallback(name: string, oldValue: any, newValue: any) {
-    console.log(
-      `Attribute ${name} has changed from ${oldValue} to ${newValue}.`
-    );
-
     switch (name) {
       case 'canvas': {
         if (oldValue !== null) {
@@ -288,14 +257,20 @@ export class SyphonServerSelectComponent extends HTMLElement {
             // Will run on next tick.
 
             if (newValue instanceof SyphonCanvasComponent) {
+              // Value is a canvas component.
               this.boundCanvas = newValue;
+              // TODO: bind selected.
+              // this.boundCanvas.bindServer()
             } else if (typeof newValue === 'string') {
+              // Value is an id.
               const el = document.getElementById(newValue);
               if (el instanceof SyphonCanvasComponent) {
                 this.boundCanvas = el;
+                // TODO: bind selected.
+                // this.boundCanvas.bindServer()
               }
             }
-
+            console.log('CANVAS', this.boundCanvas);
             clearTimeout(nextTick);
           }, 0);
         }
@@ -303,7 +278,37 @@ export class SyphonServerSelectComponent extends HTMLElement {
         break;
       }
       case 'selected': {
-        //
+        if (typeof oldValue === 'string' || typeof oldValue === 'number') {
+          // TODO: Unselect and disconnect server accordingly.
+        }
+
+        if (typeof newValue === 'string' || typeof newValue === 'number') {
+          const nextTick = setTimeout(async () => {
+            // Will run on next tick.
+
+            const index = Number(newValue);
+            if (this.servers.length === 0) {
+              const servers = await this.syphonIpc.directory.getServers();
+              let i = 0;
+              for (const server of servers) {
+                this.servers.add(server, i === index);
+                i++;
+              }
+            }
+
+            if (this.servers.length >= index) {
+              this.servers.select(index);
+              this.el.selectedIndex = index;
+            }
+
+            clearTimeout(nextTick);
+          }, 0);
+        }
+        break;
+      }
+      case 'uuid': {
+        // TODO: User passes a server UUID (could also be name, to be tested with app name and server name) they get from e.g. localStorage.
+        // That would make us handle 'old' servers UUID / names kept in a storage.
         break;
       }
     }

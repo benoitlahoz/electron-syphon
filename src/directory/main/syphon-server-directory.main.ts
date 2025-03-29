@@ -4,8 +4,8 @@ import {
   SyphonServerDescription,
   SyphonServerDirectoryListenerChannel,
 } from 'node-syphon';
-import { webContentsSend } from '../utils/web-contents-send';
 import { ElectronSyphonDirectoryChannel } from '@/common';
+import { webContentsSend } from '../../utils/web-contents-send';
 
 class _SyphonServerDirectory {
   private directory: NodeSyphonServerDirectory;

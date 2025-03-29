@@ -1,3 +1,5 @@
+import { SyphonServerDescription } from 'node-syphon/universal';
+
 export class SyphonCanvasComponent extends HTMLElement {
   /**
    * Install the web component.
@@ -19,12 +21,31 @@ export class SyphonCanvasComponent extends HTMLElement {
   private canvas: HTMLCanvasElement;
 
   /**
+   * The bound server.
+   */
+  private boundServer: SyphonServerDescription | undefined;
+
+  /**
    * Flag to avoid multiple 'connected' callback runs.
    */
   private isInitialized = false;
 
   constructor() {
     super();
+  }
+
+  public get server(): SyphonServerDescription {
+    return this.boundServer;
+  }
+
+  public bindServer(server: SyphonServerDescription | null): void {
+    if (!server) {
+      // TODO: Unbind server and clean connection.
+      return;
+    }
+
+    this.boundServer = server;
+    // TODO: Ask for frames to main process / worker with node integration.
   }
 
   /**
@@ -37,8 +58,11 @@ export class SyphonCanvasComponent extends HTMLElement {
   public getContext(
     contextType: '2d' | 'webgl' | 'webgl2' | 'webgpu' | 'bitmaprenderer',
     options?: any
+  ):
+    | RenderingContext
     // @ts-ignore
-  ): RenderingContext | GPUCanvasContext | null {
+    | GPUCanvasContext
+    | null {
     return this.canvas.getContext(contextType, options);
   }
 
