@@ -7,6 +7,10 @@ export interface SyphonServerDescriptionItem extends SyphonServerDescription {
 export class SyphonServerCollection {
   /**
    * Class is indexable.
+   *
+   * @example
+   * const collection = new SyphonServerCollection(servers);
+   * const server = collection[0];
    */
   [key: number]: SyphonServerDescriptionItem[] | any;
 
@@ -70,13 +74,55 @@ export class SyphonServerCollection {
     return;
   }
 
-  public select(index: number): SyphonServerDescriptionItem | undefined {
-    if (index < this.collection.length && index > -1) {
-      this.unselect();
-      this.collection[index].selected = true;
-      return this.collection[index];
+  public select(index?: number): SyphonServerDescriptionItem | undefined;
+  public select(uuid?: string): SyphonServerDescriptionItem | undefined;
+  public select(
+    server?: SyphonServerDescriptionItem | SyphonServerDescription
+  ): SyphonServerDescriptionItem | undefined;
+  public select(
+    ...args: (
+      | SyphonServerDescriptionItem
+      | SyphonServerDescription
+      | number
+      | string
+      | undefined
+    )[]
+  ): SyphonServerDescriptionItem | undefined {
+    const arg = args[0];
+    let res: SyphonServerDescriptionItem | undefined;
+
+    switch (typeof arg) {
+      case 'undefined': {
+        this.unselect();
+        break;
+      }
+      case 'number': {
+        const index = arg;
+        if (index < this.collection.length && index > -1) {
+          this.unselect();
+          this.collection[index].selected = true;
+          res = this.collection[index];
+        }
+        break;
+      }
+      case 'string': {
+        const uuid = arg;
+        res = this.withUuid(uuid);
+        break;
+      }
+      case 'object': {
+        const server = arg;
+        const existing = this.withUuid(server.SyphonServerDescriptionUUIDKey);
+        if (existing) {
+          this.unselect();
+          existing.selected = true;
+          res = existing;
+        }
+        break;
+      }
     }
-    return;
+
+    return res;
   }
 
   public unselect(index?: number): void {
@@ -96,6 +142,14 @@ export class SyphonServerCollection {
     return this.collection.find(
       (server: SyphonServerDescriptionItem) => server.selected === true
     );
+  }
+
+  public get selectedIndex(): number {
+    const selected = this.selected;
+
+    if (selected) return this.collection.indexOf(selected);
+
+    return -1;
   }
 
   public clear(): void {

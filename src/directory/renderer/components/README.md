@@ -1,6 +1,6 @@
 # Syphon HTML Web Components
 
-## `syphon-canvas`
+## `syphon-client-canvas`
 
 TODO
 

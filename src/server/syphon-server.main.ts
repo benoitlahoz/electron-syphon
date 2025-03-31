@@ -1,1 +1,1 @@
-export * from './syphon-server-collection';
+export * from './syphon-server-collection.universal';

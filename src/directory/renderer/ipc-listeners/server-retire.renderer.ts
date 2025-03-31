@@ -3,22 +3,17 @@ import {
   SyphonServerDescription,
   SyphonServerDirectoryListenerChannel,
 } from 'node-syphon/universal';
-import { SyphonAPIName } from '@/common';
+import { getSyphonIpcAPI } from '@/utils/renderer/get-syphon-ipc-api.';
 
 class _SyphonServerRetireListener {
   // Inter-process communication API defined in the `preload` script.
   private static syphonIpc;
 
   constructor() {
-    if (!window[SyphonAPIName]) {
-      throw new Error(
-        `Syphon inter-process communicatiin API with name '${SyphonAPIName}' was not installed on 'window'.`
-      );
-    }
-    _SyphonServerRetireListener.syphonIpc = window[SyphonAPIName];
+    _SyphonServerRetireListener.syphonIpc = getSyphonIpcAPI();
   }
 
-  public register(
+  public subscribe(
     listener: (
       event: IpcRendererEvent,
       message: {
@@ -33,7 +28,15 @@ class _SyphonServerRetireListener {
     );
   }
 
-  public unregister(listener: () => void) {
+  public unsubscribe(
+    listener: (
+      event: IpcRendererEvent,
+      message: {
+        server: SyphonServerDescription;
+        servers: SyphonServerDescription[];
+      }
+    ) => void
+  ) {
     _SyphonServerRetireListener.syphonIpc.directory.off(
       SyphonServerDirectoryListenerChannel.SyphonServerRetireNotification,
       listener
@@ -44,4 +47,4 @@ class _SyphonServerRetireListener {
 const listener = new _SyphonServerRetireListener();
 Object.seal(listener);
 
-export { listener as SyphonServerRetireListener };
+export { listener as SyphonServerRetire };

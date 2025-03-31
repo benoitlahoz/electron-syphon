@@ -1,13 +1,19 @@
 import { SyphonServerDescription } from 'node-syphon/universal';
 
-export class SyphonCanvasComponent extends HTMLElement {
+export class SyphonClientCanvasComponent extends HTMLElement {
   /**
    * Install the web component.
    *
-   * @param { string } name The name of the component (defaults to `syphon-canvas`).
+   * @param { string | undefined } name An optional prefix to prepend to the component's name.
+   *
+   * @example
+   * // For `syphon-server-select` component.
+   * install('foo') // Component will be usable with name `foo-syphon-server-select`
    */
-  public static install(name = 'syphon-canvas') {
-    customElements.define(name, SyphonCanvasComponent);
+  public static install(prefix?: string) {
+    let name = `syphon-client-canvas`;
+    if (prefix) name = `${prefix}-${name}`;
+    customElements.define(name, SyphonClientCanvasComponent);
   }
 
   /**
@@ -38,7 +44,11 @@ export class SyphonCanvasComponent extends HTMLElement {
     return this.boundServer;
   }
 
-  public bindServer(server: SyphonServerDescription | null): void {
+  public bindServer(server?: SyphonServerDescription | null): void {
+    console.log('BIIIND', server);
+    // TODO checkif changed.
+    // Do nothing if not.
+
     if (!server) {
       // TODO: Unbind server and clean connection.
       return;

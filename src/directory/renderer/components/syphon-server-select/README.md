@@ -1,1 +1,0 @@
-# `syphon-server-select`
