@@ -123,35 +123,6 @@ export class SyphonServerSelectComponent extends HTMLElement {
     }
   }
 
-  /**
-   * Add an `HTMLOptionElement` to the root element when a server appears.
-   *
-   * @param { SyphonServerDescription } server The server's description.
-   * @param { boolean } selected Is the server initially selected (defaults to false).
-   */
-  protected addOption(server: SyphonServerDescription, selected = false) {
-    const option = document.createElement('option');
-    option.text = formatServerName(server);
-    option.value = server.SyphonServerDescriptionUUIDKey;
-    option.selected = selected;
-    this.el.appendChild(option);
-  }
-
-  /**
-   * Removes the corresponding `HTMLOptionElement` from the root element when a server disappears.
-   *
-   * @param { SyphonServerDescription } server The server's description.
-   */
-  protected removeOption(server: SyphonServerDescription) {
-    const option = Array.from(this.el.children).find(
-      (el: HTMLOptionElement) =>
-        el.value === server.SyphonServerDescriptionUUIDKey
-    );
-    if (option) {
-      option.remove();
-    }
-  }
-
   protected onElementChangeEvent() {
     const uuid = this.el.value;
     const server = this.servers.select(uuid);

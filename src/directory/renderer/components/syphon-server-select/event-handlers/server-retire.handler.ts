@@ -23,7 +23,10 @@ export class OnServerRetire {
     }
 
     if (this.servers.remove(existing)) {
-      this.removeOption(message.server);
+      SelectComponentBuilder.removeItem(
+        this.el,
+        message.server.SyphonServerDescriptionUUIDKey
+      );
 
       const event = new Event('retire');
       this.dispatchEvent(event);
